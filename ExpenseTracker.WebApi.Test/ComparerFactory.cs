@@ -19,6 +19,7 @@ namespace ExpenseTracker.WebApi.Test
         {
             _comparerFunc = comparerFunc;
         }
+
         public bool Equals(T x, T y)
         {
             return _comparerFunc(x, y);
