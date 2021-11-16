@@ -1,7 +1,9 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using ExpenseTracker.WebApi.Extensions;
 using ExpenseTracker.WebApi.Models;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -13,6 +15,7 @@ namespace ExpenseTracker.WebApi.Controllers
     [ApiController]
     public class ExpensesController : ControllerBase
     {
+        private const string SERVER_ERROR = "Internal Server Error. Something went Wrong!";
         private readonly IExpensesRepository _expensesRepository;
         private readonly ILogger<ExpensesController> _logger;
 
@@ -29,8 +32,16 @@ namespace ExpenseTracker.WebApi.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Expense>>> GetExpenses()
         {
-            _logger.LogDebug("ExpensesController GetExpenses invoked");
-            return await _expensesRepository.Expenses.ToListAsync();
+            try
+            {
+                _logger.LogDebug("ExpensesController GetExpenses invoked");
+                return await _expensesRepository.Expenses.ToListAsync();
+            }
+            catch (Exception exp)
+            {
+                _logger.LogError($"Error invoking ExpensesController GetExpenses", exp);
+                return this.StatusCode(StatusCodes.Status500InternalServerError, SERVER_ERROR);
+            }
         }
 
         /// <summary>
@@ -41,12 +52,20 @@ namespace ExpenseTracker.WebApi.Controllers
         [HttpGet("{key}")]
         public async Task<ActionResult<Expense>> GetExpense(int key)
         {
-            _logger.LogDebug($"ExpensesController GetExpense({key}) invoked");
-            var expense = await _expensesRepository.GetExpenseById(key);
+            try
+            {
+                _logger.LogDebug($"ExpensesController GetExpense({key}) invoked");
+                var expense = await _expensesRepository.GetExpenseById(key);
 
-            if (expense == null) return NotFound();
+                if (expense == null) return NotFound();
 
-            return expense;
+                return expense;
+            }
+            catch (Exception exp)
+            {
+                _logger.LogError($"Error invoking ExpensesController GetExpense({key})", exp);
+                return this.StatusCode(StatusCodes.Status500InternalServerError, SERVER_ERROR);
+            }
         }
 
         /// <summary>
@@ -58,19 +77,27 @@ namespace ExpenseTracker.WebApi.Controllers
         [HttpPut]
         public async Task<IActionResult> UpdateExpense([FromForm] int key, [FromForm] string values)
         {
-            _logger.LogDebug($"ExpensesController UpdateExpense({key}, {values}) invoked");
+            try
+            {
+                _logger.LogDebug($"ExpensesController UpdateExpense({key}, {values}) invoked");
 
-            var expense = await _expensesRepository.GetExpenseById(key);
-            if (expense == null) return BadRequest();
+                var expense = await _expensesRepository.GetExpenseById(key);
+                if (expense == null) return BadRequest();
 
-            JsonConvert.PopulateObject(values, expense);
+                JsonConvert.PopulateObject(values, expense);
 
-            if (!TryValidateModel(expense))
-                return BadRequest(ModelState.GetAllErrors());
+                if (!TryValidateModel(expense))
+                    return BadRequest(ModelState.GetAllErrors());
 
-            var result = await _expensesRepository.UpdateExpense(expense);
+                var result = await _expensesRepository.UpdateExpense(expense);
 
-            return result ? (IActionResult) NoContent() : NotFound();
+                return result ? (IActionResult) NoContent() : NotFound();
+            }
+            catch (Exception exp)
+            {
+                _logger.LogError($"Error invoking ExpensesController UpdateExpense({key}, {values})", exp);
+                return this.StatusCode(StatusCodes.Status500InternalServerError, SERVER_ERROR);
+            }
         }
 
         /// <summary>
@@ -81,17 +108,25 @@ namespace ExpenseTracker.WebApi.Controllers
         [HttpPost]
         public async Task<ActionResult<Expense>> AddExpense([FromForm] string values)
         {
-            _logger.LogDebug($"ExpensesController AddExpense({values}) invoked");
+            try
+            {
+                _logger.LogDebug($"ExpensesController AddExpense({values}) invoked");
 
-            var expense = new Expense();
-            JsonConvert.PopulateObject(values, expense);
+                var expense = new Expense();
+                JsonConvert.PopulateObject(values, expense);
 
-            if (!TryValidateModel(expense))
-                return BadRequest(ModelState.GetAllErrors());
+                if (!TryValidateModel(expense))
+                    return BadRequest(ModelState.GetAllErrors());
 
-            var created = await _expensesRepository.AddExpense(expense);
+                var created = await _expensesRepository.AddExpense(expense);
 
-            return CreatedAtAction("GetExpense", new {key = created.Id}, created);
+                return CreatedAtAction("GetExpense", new {key = created.Id}, created);
+            }
+            catch (Exception exp)
+            {
+                _logger.LogError($"Error invoking ExpensesController AddExpense({values})", exp);
+                return this.StatusCode(StatusCodes.Status500InternalServerError, SERVER_ERROR);
+            }
         }
 
         /// <summary>
@@ -102,11 +137,19 @@ namespace ExpenseTracker.WebApi.Controllers
         [HttpDelete]
         public async Task<IActionResult> DeleteExpense([FromForm] int key)
         {
-            _logger.LogDebug($"ExpensesController DeleteExpense({key}) invoked");
+            try
+            {
+                _logger.LogDebug($"ExpensesController DeleteExpense({key}) invoked");
 
-            var result = await _expensesRepository.DeleteExpense(key);
+                var result = await _expensesRepository.DeleteExpense(key);
 
-            return result ? (IActionResult) NoContent() : NotFound();
+                return result ? (IActionResult) NoContent() : NotFound();
+            }
+            catch (Exception exp)
+            {
+                _logger.LogError($"Error invoking ExpensesController DeleteExpense({key})", exp);
+                return this.StatusCode(StatusCodes.Status500InternalServerError, SERVER_ERROR);
+            }
         }
     }
 }
